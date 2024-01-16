@@ -1,4 +1,4 @@
-import {Range, TextEditor, TextDocument, } from 'vscode';
+import { Range, TextEditor, TextDocument } from 'vscode';
 
 /**
  * Represents a single expression to be executed by Tidal.
@@ -17,7 +17,6 @@ export class TidalExpression {
  * Represents a document of Tidal commands.
  */
 export class TidalEditor {
-
     private editor: TextEditor;
 
     constructor(editor: TextEditor) {
@@ -29,11 +28,18 @@ export class TidalEditor {
     }
 
     /**
-     * Given a document and a range, find the first line which is not blank. 
+     * Given a document and a range, find the first line which is not blank.
      * Returns null if there are no non-blank lines before the end of the selection.
      */
-    private getFirstNonBlankLineInRange(document: TextDocument, range: Range): number | null {
-        for (let currentLineNumber = range.start.line; currentLineNumber <= range.end.line; currentLineNumber++) {
+    private getFirstNonBlankLineInRange(
+        document: TextDocument,
+        range: Range
+    ): number | null {
+        for (
+            let currentLineNumber = range.start.line;
+            currentLineNumber <= range.end.line;
+            currentLineNumber++
+        ) {
             if (!this.isEmpty(document, currentLineNumber)) {
                 return currentLineNumber;
             }
@@ -46,7 +52,10 @@ export class TidalEditor {
      * Assuming that the start position of the range is inside a Tidal expression, search backwards for the first line
      * of that expression.
      */
-    private getFirstExpressionLineBeforeSelection(document: TextDocument, range: Range): number | null {
+    private getFirstExpressionLineBeforeSelection(
+        document: TextDocument,
+        range: Range
+    ): number | null {
         let currentLineNumber = range.start.line;
 
         // If current line is empty, do not attempt to search.
@@ -54,14 +63,20 @@ export class TidalEditor {
             return null;
         }
 
-        while (currentLineNumber >= 0 && !this.isEmpty(document, currentLineNumber)) {
+        while (
+            currentLineNumber >= 0 &&
+            !this.isEmpty(document, currentLineNumber)
+        ) {
             currentLineNumber--;
         }
 
         return currentLineNumber + 1;
     }
 
-    private getStartLineNumber(document: TextDocument, range: Range): number | null {
+    private getStartLineNumber(
+        document: TextDocument,
+        range: Range
+    ): number | null {
         // If current line is empty, search forward for the expression start
         if (this.isEmpty(document, range.start.line)) {
             return this.getFirstNonBlankLineInRange(document, range);
@@ -70,15 +85,23 @@ export class TidalEditor {
         return this.getFirstExpressionLineBeforeSelection(document, range);
     }
 
-    private getEndLineNumber(document: TextDocument, startLineNumber: number): number {
+    private getEndLineNumber(
+        document: TextDocument,
+        startLineNumber: number
+    ): number {
         let currentLineNumber = startLineNumber;
-        while (currentLineNumber < document.lineCount && !this.isEmpty(document, currentLineNumber)) {
+        while (
+            currentLineNumber < document.lineCount &&
+            !this.isEmpty(document, currentLineNumber)
+        ) {
             currentLineNumber++;
         }
         return currentLineNumber - 1;
     }
 
-    public getTidalExpressionUnderCursor(getMultiline: boolean): TidalExpression | null {
+    public getTidalExpressionUnderCursor(
+        getMultiline: boolean
+    ): TidalExpression | null {
         const document = this.editor.document;
         const position = this.editor.selection.active;
 
@@ -87,14 +110,27 @@ export class TidalEditor {
         // If there is a single-line expression
         // TODO: decide the behaviour in case in multi-line selections
         if (!getMultiline) {
-            if (this.isEmpty(document, position.line)) { return null; }
-            let range = new Range(line.lineNumber, 0, line.lineNumber, line.text.length);
+            if (this.isEmpty(document, position.line)) {
+                return null;
+            }
+            let range = new Range(
+                line.lineNumber,
+                0,
+                line.lineNumber,
+                line.text.length
+            );
             return new TidalExpression(line.text, range);
         }
 
         // If there is a multi-line expression
-        const selectedRange = new Range(this.editor.selection.anchor, this.editor.selection.active);
-        const startLineNumber = this.getStartLineNumber(document, selectedRange);
+        const selectedRange = new Range(
+            this.editor.selection.anchor,
+            this.editor.selection.active
+        );
+        const startLineNumber = this.getStartLineNumber(
+            document,
+            selectedRange
+        );
         if (startLineNumber === null) {
             return null;
         }
@@ -104,6 +140,11 @@ export class TidalEditor {
 
         let range = new Range(startLineNumber, 0, endLineNumber, endCol);
 
-        return new TidalExpression(document.getText(range), range);
-    }    
+        let text = document.getText(range);
+
+        // remove all lines that start with `--`
+        text = text.replace(/^--.*$/gm, '');
+
+        return new TidalExpression(text, range);
+    }
 }
